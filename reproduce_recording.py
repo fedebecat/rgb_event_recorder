@@ -32,7 +32,7 @@ import numpy as np
 
 def main():
     print('start')
-    recordings_folder = 'recordings/recording_230920_180138/'
+    recordings_folder = 'recordings/recording_230920_190602/'
     
     # Read RGB frames and extract timestamps from filenames to check the framerate is ok
     rgb_frames = []
@@ -73,7 +73,7 @@ def main():
 
         # display image
         cv2.imshow("Frame", frame)
-        key = cv2.waitKey(1) & 0xFF
+        key = cv2.waitKey(0) & 0xFF
         if key == ord("q"):
             break
 
@@ -91,7 +91,7 @@ def main():
             else:
                 # display rgb frame
                 cv2.imshow("RGB Frame", rgb_frames[rgb_index]['frame'])
-                key = cv2.waitKey(1) & 0xFF
+                key = cv2.waitKey(0) & 0xFF
                 if key == ord("q"):
                     break
 

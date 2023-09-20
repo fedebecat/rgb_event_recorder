@@ -26,7 +26,7 @@ def main():
     log_folder = os.path.join(output_dir, recording_name)
     os.makedirs(log_folder, exist_ok=True)
     os.makedirs(log_folder + '/frames', exist_ok=True)
-    cam_record = Process(target = record_video_till_stop, args = (thread_event, event_camera_event, log_folder))
+    cam_record = Process(target = record_video_till_stop, args=(thread_event, event_camera_event, log_folder))
 
     # Start the recording
     if device.get_i_events_stream():
@@ -60,18 +60,18 @@ def main():
         cam_record.start()
 
         evt_start_timestamp = None
-        startup_time = True
-        startup_counter = 0
-        startup_limit = 5
+        # startup_time = True
+        # startup_counter = 0
+        # startup_limit = 5
         # Process events
         for evs in mv_iterator:
-            if startup_time:
-                startup_counter += 1
-                if startup_counter > startup_limit:
-                    startup_time = False
-                    print("startup time over")
-                print('skipping events')
-                continue
+            # if startup_time:
+            #     startup_counter += 1
+            #     if startup_counter > startup_limit:
+            #         startup_time = False
+            #         print("startup time over")
+            #     print('skipping events')
+            #     continue
                 
             if not evt_start_timestamp:
                 event_camera_event.set()
