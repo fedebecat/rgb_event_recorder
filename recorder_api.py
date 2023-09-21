@@ -20,31 +20,32 @@ This file contains a collection of functions to be used in the main script for r
 
 class Recorder:
 
-    def __init__(self, output_dir, camera_type='both'):
+    def __init__(self, output_dir):
         self.output_dir = output_dir
-        self.camera_type = camera_type
+        # Thread events
         self.thread_event = Event() # thread event for stopping RGB camera
         self.event_camera_event = Event() # thread event for Event camera
+
+        # Output folder
         self.recording_name = "recording_" + time.strftime("%y%m%d_%H%M%S", time.localtime())
         self.log_folder = os.path.join(output_dir, self.recording_name)
         os.makedirs(self.log_folder, exist_ok=True)
         os.makedirs(self.log_folder + '/frames', exist_ok=True)
+
+        # RGB camera thread
         self.cam_record = Process(target=record_video_till_stop, args=(self.thread_event,
                                                                        self.event_camera_event,
                                                                        self.log_folder))
         # Init event camera
         self.device = initiate_device("")
         self.event_log_path = self.log_folder + "/event.raw"
-        # Events iterator on Device
-        # self.mv_iterator = EventsIterator.from_device(device=self.device)
-        # height, width = self.mv_iterator.get_size()  # Camera Geometry
-        # print(f"Event camera - height: {height}, width: {width}")
         self.evt_start_timestamp = None
+
+        # Event camera thread
         self.event_record = Process(target=self.record_event)
 
     def record_event(self):
-        # Start the recording
-        print('event camera recording')
+        # Start the recording with the event camera
         if self.device.get_i_events_stream():
             print(self.event_log_path )
             print(f'Recording event data to {self.event_log_path}')
@@ -59,10 +60,14 @@ class Recorder:
         print(f"Event camera - height: {height}, width: {width}")
 
         # Process events
+        evt_start_timestamp = None
         for evs in mv_iterator:
-            #print(evs)
-            # Dispatch system events to the window
-            #EventLoop.poll_and_dispatch()
+            if not evt_start_timestamp:
+                # As soon as the event camera starts recording, send a trigger to the
+                # rgb thread to throw away previously stored frames.
+                self.event_camera_event.set()
+                evt_start_timestamp = time.time()
+                print(f"evt_start_timestamp: {evt_start_timestamp}")
 
             print(self.thread_event.is_set())
             if self.thread_event.is_set():
