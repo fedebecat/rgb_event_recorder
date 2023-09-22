@@ -12,7 +12,7 @@ import os
 from multiprocessing import Process, Event
 # from camera_record import record_video_till_stop
 import cv2
-from video_capture import VideoCaptureAsync, VideoCaptureAsyncWithTimestamp
+from video_capture import VideoCaptureAsyncWithTimestamp
 from datetime import datetime, timedelta
 
 '''
@@ -36,10 +36,6 @@ class Recorder:
         os.makedirs(self.log_folder + '/frames', exist_ok=True)
 
         # RGB camera thread
-       
-        # self.cam_record = Process(target=record_video_till_stop, args=(self.event_camera_has_stopped,
-        #                                                               self.event_camera_event,
-        #                                                               self.log_folder))
         self.cam_record = Process(target=self.record_video_till_stop)
 
         # Init event camera
@@ -73,19 +69,17 @@ class Recorder:
             if not evt_start_timestamp:
                 # As soon as the event camera starts recording, send a trigger to the
                 # rgb thread to throw away previously stored frames.
-                self.event_camera_event.set()
                 evt_start_timestamp = time.time()
                 print(f"evt_start_timestamp: {evt_start_timestamp}")
 
             #print(self.thread_event.is_set())
             if self.thread_event.is_set():
-                print('stopping event camera')
-
                 if close_time is None:
                     close_time = self.get_closing_time()
+                    print(f'stopping event camera at {close_time}...')
 
                 # Stop the recording
-                print(datetime.now(), close_time)
+                #print(datetime.now(), close_time)
                 if datetime.now() > close_time:
                     self.device.get_i_events_stream().stop_log_raw_data()
                     self.event_camera_has_stopped.set()
@@ -117,6 +111,7 @@ class Recorder:
             if time_elapsed > fps_delay and self.event_camera_event.is_set():
                 if start_time is None:
                     start_time = datetime.now()
+                    print(f"start_time: {start_time}")
                 # print(time_elapsed - fps_delay)
                 prev = timestamp
                 frames += 1
@@ -124,6 +119,7 @@ class Recorder:
             if self.thread_event.is_set():
                 if close_time is None:
                     close_time = self.get_closing_time()
+                    print(f'stopping rgb camera at {close_time}...')
                 if datetime.now() > close_time:
                     break
         duration = datetime.now() - start_time
@@ -139,11 +135,9 @@ class Recorder:
         print(f"duration: {duration}")
         # The following line initiates the video object and video file named 'video.avi' 
         # of width and height declared at the beginning.
-        #out = cv2.VideoWriter('video.avi', fourcc, fps, (vid_w,vid_h))
         print("saving video frames")
         # The loop goes through the array of images and writes each image to the video file
         for i in range(len(images)):
-            #out.write(images[i]['frame'])
             # save video as frames in the frames folder. Add timestamp to filename
             cur_timestamp = images[i]['timestamp']
             if cur_timestamp <= close_time:
@@ -154,8 +148,9 @@ class Recorder:
         print("Done")
 
     def start_recording_rgb_and_event(self):
-        self.event_record.start()
         self.cam_record.start()
+        self.event_camera_event.set()
+        self.event_record.start()
 
     def stop_recording_rgb_and_event(self):
         close_time = datetime.now() + timedelta(seconds=2)
