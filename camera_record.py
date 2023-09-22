@@ -1,13 +1,14 @@
 import cv2
 # Import the video capturing function
-from video_capture import VideoCaptureAsync
+from video_capture import VideoCaptureAsync, VideoCaptureAsyncWithTimestamp
 import time
 
 #Specify width and height of video to be recorded
 vid_w = 1280
 vid_h = 720
 #Intiate Video Capture object
-capture = VideoCaptureAsync(src=0, width=vid_w, height=vid_h)
+# capture = VideoCaptureAsync(src=0, width=vid_w, height=vid_h)
+capture = VideoCaptureAsyncWithTimestamp(src=0, width=vid_w, height=vid_h)
 #Intiate codec for Video recording object
 fourcc = cv2.VideoWriter_fourcc(*'DIVX')
 
@@ -22,16 +23,18 @@ def record_video_till_stop(thread_event, evt_camera_trigger, log_folder):
     prev = 0
     frame_rate = 30
     start_time = time.time()
-    evt_triggered = False
+    # evt_triggered = False
     while True:
-        if evt_camera_trigger.is_set() and not evt_triggered:
-            # reset buffer as soon as the event camera is ready
-            images = []
-            evt_triggered = True
+        # if evt_camera_trigger.is_set() and not evt_triggered:
+        #     # reset buffer as soon as the event camera is ready
+        #     print('resetting image queue')
+        #     images = []
+        #     evt_triggered = True
         time_elapsed = time.time() - prev
-        ret, new_frame = capture.read()
-        if time_elapsed > 1./frame_rate:
-            prev = time.time()
+        ret, new_frame, timestamp = capture.read()
+
+        if time_elapsed > 1./frame_rate and evt_camera_trigger.is_set():
+            prev = timestamp
             frames += 1
             images.append({'frame': new_frame, 'timestamp': prev})
         if thread_event.is_set():
