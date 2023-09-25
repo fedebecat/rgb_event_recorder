@@ -12,7 +12,6 @@ import os
 from multiprocessing import Process, Event
 # from camera_record import record_video_till_stop
 import cv2
-from video_capture import VideoCaptureAsyncWithTimestamp
 from datetime import datetime, timedelta
 
 '''
@@ -28,6 +27,7 @@ class Recorder:
         self.stop_recording_trigger = Event() # thread event for stopping RGB camera
         self.ev_start_trigger = Event() # thread event for Event camera
         self.event_camera_has_stopped_trigger = Event()
+        self.exit_trigger = Event()
 
         # Output folder
         self.recording_name = "recording_" + datetime.now().strftime('%H:%M:%S.%f')
@@ -89,16 +89,8 @@ class Recorder:
     
     def record_rgb_synch(self):
         #start video capture
-        # vid_w = 320
-        # vid_h = 240
         cap = cv2.VideoCapture(0)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        # cap.set(cv2.CAP_PROP_FRAME_WIDTH, vid_w)
-        # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, vid_h)
-
-        # set CAP_PROP_FORMAT
-        # cap.set(cv2.CAP_PROP_FORMAT, 0)
-
         # set framerate
         FPS = 30.0
         cap.set(cv2.CAP_PROP_FPS, FPS)
@@ -146,8 +138,7 @@ class Recorder:
                         print(f"actual fps: {fps} ---- desired fps: {FPS}")
                         print(f"len(frame_buffer): {len(frame_buffer)}")
                         print(f"duration: {duration}")
-                        # The following line initiates the video object and video file named 'video.avi' 
-                        # of width and height declared at the beginning.
+
                         print("saving video frames")
                         # The loop goes through the array of images and writes each image to the video file
                         for i in range(len(frame_buffer)):
@@ -159,63 +150,9 @@ class Recorder:
             
                         frame_buffer = []
                         print("Done")
-
-
-    def record_video_till_stop(self):
-        #start video capture
-        vid_w = 1280
-        vid_h = 720
-        capture = VideoCaptureAsyncWithTimestamp(src=0, width=vid_w, height=vid_h)
-        capture.start()
-
-        #Create array to hold frames from capture
-        images = []
-        # Capture for duration defined by variable 'duration'
-        prev = datetime.now()
-        frame_rate = 30
-        fps_delay = timedelta(seconds=0, microseconds=(1/frame_rate)*1000*1000)
-        # evt_triggered = False
-        start_time = None
-        close_time = None
-        while True:
-            time_elapsed = datetime.now() - prev
-            ret, new_frame, timestamp = capture.read()
-
-            if time_elapsed > fps_delay and self.ev_start_trigger.is_set():
-                if start_time is None:
-                    start_time = datetime.now()
-                    print(f"start_time: {start_time}")
-                prev = timestamp
-                images.append({'frame': new_frame, 'timestamp': prev})
-            if self.stop_recording_trigger.is_set():
-                if close_time is None:
-                    close_time = self.get_closing_time()
-                    print(f'stopping rgb camera at {close_time}...')
-                if datetime.now() > close_time:
-                    break
-        duration = datetime.now() - start_time
-        capture.stop()
-        # The fps variable which counts the number of frames and divides it by 
-        # the duration gives the frames per second which is used to record the video later.
-        print(f"duration: {duration.seconds + duration.microseconds/(1000*1000)}")
-        fps = len(images)/(duration.seconds + duration.microseconds/(1000*1000))
-        print(f"frames: {len(images)}")
-        print(f"fps: {fps}")
-        print(f"len(images): {len(images)}")
-        print(f"duration: {duration}")
-        # The following line initiates the video object and video file named 'video.avi' 
-        # of width and height declared at the beginning.
-        print("saving video frames")
-        # The loop goes through the array of images and writes each image to the video file
-        for i in range(len(images)):
-            # save video as frames in the frames folder. Add timestamp to filename
-            cur_timestamp = images[i]['timestamp']
-            if cur_timestamp <= close_time:
-                cv2.imwrite(f"{self.log_folder}/frames/frame_{i}_{cur_timestamp.strftime('%H:%M:%S.%f')}.jpg",
-                            images[i]['frame'])
-            
-        images = []
-        print("Done")
+            if self.exit_trigger.is_set():
+                print('Exiting camera thread...')
+                break
 
     def start_recording_rgb_and_event(self):
         #self.cam_record.start()
@@ -229,9 +166,6 @@ class Recorder:
         self.stop_recording_trigger.set()
         # reset trigger
         self.ev_start_trigger.clear()
-
-        self.cam_record.join()
-        self.cam_record.close()
         self.event_record.join()
         self.event_record.close()
 
@@ -240,6 +174,11 @@ class Recorder:
         close_time -= timedelta(microseconds=close_time.microsecond)
         print(f"close_time: {close_time.strftime('%H:%M:%S.%f')}")
         return close_time
+    
+    def exit(self):
+        self.exit_trigger.set()
+        self.cam_record.join()
+        self.cam_record.close()
 
 
 def sanity_check(recordings_folder):
@@ -274,25 +213,12 @@ rec.start_recording_rgb_and_event()
 # wait 5 seconds
 start_time = time.time()
 
-while time.time() - start_time < 6:
+while time.time() - start_time < 15:
     #print('waiting...')
     pass
 print('done waiting')
 
 rec.stop_recording_rgb_and_event()
 
-# time.sleep(3)
-
-# rec.start_recording_rgb_and_event()
-
-# # wait 5 seconds
-# start_time = time.time()
-
-# while time.time() - start_time < 6:
-#     #print('waiting...')
-#     pass
-# print('done waiting')
-
-# rec.stop_recording_rgb_and_event()
-
-#sanity_check(rec.log_folder)
+time.sleep(1)
+rec.exit()
