@@ -21,37 +21,28 @@ This file contains a collection of functions to be used in the main script for r
 
 class Recorder:
 
-    def __init__(self, output_dir):
-        self.output_dir = output_dir
+    def __init__(self):
+
+        # Output folder creation
+        self.set_directory()
+
         # Thread events
         self.stop_recording_trigger = Event() # thread event for stopping RGB camera
         self.ev_start_trigger = Event() # thread event for Event camera
         self.event_camera_has_stopped_trigger = Event()
         self.exit_trigger = Event()
 
-        # Output folder
-        self.recording_name = "recording_" + datetime.now().strftime('%H:%M:%S.%f')
-        self.log_folder = os.path.join(self.output_dir, self.recording_name)
-        os.makedirs(self.log_folder, exist_ok=True)
-        os.makedirs(self.log_folder + '/frames', exist_ok=True)
-        self.event_log_path = self.log_folder + "/event.raw"
-        print(f"Recording to {self.log_folder}")
-
-        # RGB camera thread
-        self.cam_record = Process(target=self.record_rgb_synch)
-        self.cam_record.start()
-
         # Init event camera
         self.device = initiate_device("")
         self.evt_start_timestamp = None
 
-        # Event camera thread
-        self.event_record = Process(target=self.record_event)
+        # # Event camera thread
+        # self.event_record = Process(target=self.record_event)
 
     def record_event(self):
         # Start the recording with the event camera
         if self.device.get_i_events_stream():
-            print(self.event_log_path )
+            print(self.event_log_path)
             print(f'Recording event data to {self.event_log_path}')
             self.device.get_i_events_stream().log_raw_data(self.event_log_path)
             print('recording started')
@@ -86,6 +77,14 @@ class Recorder:
                     print('done')
                     break
 
+    def set_directory(self):
+        self.output_dir = 'recordings'
+        self.recording_name = "recording_" + datetime.now().strftime('%H:%M:%S.%f')
+        self.log_folder = os.path.join(self.output_dir, self.recording_name)
+        os.makedirs(self.log_folder, exist_ok=True)
+        os.makedirs(self.log_folder + '/frames', exist_ok=True)
+        self.event_log_path = self.log_folder + "/event.raw"
+        print(f"Recording to {self.log_folder}")
     
     def record_rgb_synch(self):
         #start video capture
@@ -109,6 +108,7 @@ class Recorder:
             grabbed = cap.grab()
 
             if self.ev_start_trigger.is_set() and not is_recording:
+                print('#################### starting rgb camera...')
                 print('starting rgb camera...')
                 is_recording = True
                 # store first frame
@@ -149,18 +149,28 @@ class Recorder:
                                             frame_buffer[i]['frame'])
             
                         frame_buffer = []
+                        close_timestamp = None
                         print("Done")
             if self.exit_trigger.is_set():
                 print('Exiting camera thread...')
                 break
 
     def start_recording_rgb_and_event(self):
-        #self.cam_record.start()
+        self.exit_trigger.clear()
+        self.stop_recording_trigger.clear()
+        # RGB camera thread
+        self.cam_record = Process(target=self.record_rgb_synch, args=())
+        self.cam_record.start()
+
+        time.sleep(2)
+
+        # Event camera thread
+        self.event_record = Process(target=self.record_event)
         self.ev_start_trigger.set()
         self.event_record.start()
 
     def stop_recording_rgb_and_event(self):
-        close_time = datetime.now() + timedelta(seconds=2)
+        close_time = datetime.now() + timedelta(seconds=1)
         close_time -= timedelta(microseconds=close_time.microsecond)
         print(f"close_time: {close_time}")
         self.stop_recording_trigger.set()
@@ -168,9 +178,10 @@ class Recorder:
         self.ev_start_trigger.clear()
         self.event_record.join()
         self.event_record.close()
+        self.exit()
 
     def get_closing_time(self):
-        close_time = datetime.now() + timedelta(seconds=2)
+        close_time = datetime.now() + timedelta(seconds=1)
         close_time -= timedelta(microseconds=close_time.microsecond)
         print(f"close_time: {close_time.strftime('%H:%M:%S.%f')}")
         return close_time
@@ -182,6 +193,7 @@ class Recorder:
 
 
 def sanity_check(recordings_folder):
+    # TODO: not working yet
     # Read RGB frames and extract timestamps from filenames to check the framerate is ok
     rgb_frames = []
     for filename in os.listdir(recordings_folder + '/frames'):
@@ -204,7 +216,8 @@ def sanity_check(recordings_folder):
     print(f'duration: {timestamps[-1] - timestamps[0]}')
 
 
-rec = Recorder('recordings')
+
+rec = Recorder()
 
 time.sleep(3)
 
@@ -213,12 +226,27 @@ rec.start_recording_rgb_and_event()
 # wait 5 seconds
 start_time = time.time()
 
-while time.time() - start_time < 15:
+while time.time() - start_time < 4:
     #print('waiting...')
     pass
 print('done waiting')
 
 rec.stop_recording_rgb_and_event()
 
-time.sleep(1)
-rec.exit()
+print('-----------------------FIRST RECORDING DONE-----------------------')
+
+time.sleep(5)
+
+rec.set_directory()
+rec.start_recording_rgb_and_event()
+# wait 5 seconds
+start_time = time.time()
+
+while time.time() - start_time < 4:
+    #print('waiting...')
+    pass
+print('done waiting')
+
+rec.stop_recording_rgb_and_event()
+
+print('-----------------------SECOND RECORDING DONE-----------------------')
