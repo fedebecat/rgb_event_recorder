@@ -5,9 +5,16 @@ from pynput.keyboard import Listener
 from recorder_api import Recorder
 import uuid
 import json
+import random
 
 message = ''
 keys = []
+
+# read sentences.txt from file and store each line in a list
+sentences = []
+with open('sentences.txt', 'r') as book:
+    for line in book:
+        sentences.append(line)
 
 def write_keys(keys):
     global message
@@ -51,6 +58,13 @@ if __name__ == '__main__':
     #message = ''
 
     while index < len(au_indexes):
+        if au_indexes[index] == "READING":
+            print('###############################')
+            print('###############################')
+            print(random.choice(sentences))
+            print('###############################')
+            print('###############################')
+
         rec.start_recording_rgb_and_event()
         start_time = time.time()
 
