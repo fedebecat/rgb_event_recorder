@@ -6,30 +6,16 @@ from recorder_api import Recorder
 import uuid
 import json
 import random
+import requests
 
-message = ''
-keys = []
+# the url of the webserver where the sentences are going to be displayed
+url = 'http://localhost:8000'
 
 # read sentences.txt from file and store each line in a list
 sentences = []
 with open('sentences.txt', 'r') as book:
     for line in book:
-        sentences.append(line)
-
-def write_keys(keys):
-    global message
-    for key in keys:
-        k = str(key).replace(f'{chr(39)}', '')
-
-        message = k
-        #print(message)
-
-
-def on_press(key):
-    global keys
-    keys.append(key)
-    write_keys(keys)
-    keys = []
+        sentences.append(line[:-1])
 
 
 if __name__ == '__main__':
@@ -55,15 +41,26 @@ if __name__ == '__main__':
     print("READY?")
     input('Press ENTER to start...')
     print("START\n\n")
-    #message = ''
+
+    used_sentences = dict()
 
     while index < len(au_indexes):
         if au_indexes[index] == "READING":
+            print("\nSENTENCE:")
             print('###############################')
             print('###############################')
-            print(random.choice(sentences))
+            s = random.choice(sentences)
+            print(s)
+            requests.post(url, json=s)
             print('###############################')
             print('###############################')
+
+            with open(f'recordings/{user_hash}/AU_READING/sentences.json', 'w') as outfile:
+                used_sentences[rep_index] = s
+                json.dump(used_sentences, outfile)
+
+            input('Press ENTER to start recording...')
+
 
         rec.start_recording_rgb_and_event()
         start_time = time.time()
@@ -71,7 +68,7 @@ if __name__ == '__main__':
         print("-----------------------------------------------------------------------")
         print("RECORDING AU_"+str(au_indexes[index])+" ["+str(rep_index)+" attempt]...")
 
-        _ = input('--------------------------- Press ENTER to stop -------------------------')
+        _ = input('Press ENTER to stop')
 
         end_time = time.time()
         total_time = end_time-start_time
@@ -79,7 +76,7 @@ if __name__ == '__main__':
         rec.stop_recording_rgb_and_event()
         time.sleep(1)
 
-        message = input(f'Select action: \n ENTER to record next AU \n "R" to record again the current AU {au_indexes[index]} \n "E" to erase current recording and record it again. \n "Q" to quit. \n\n')
+        message = input(f'\nSelect action: \n ENTER to record next AU \n "R" to record again the current AU {au_indexes[index]} \n "E" to erase current recording and record it again. \n "Q" to quit. \n\n')
 
         if message == 'R':
             rep_index += 1
@@ -87,6 +84,8 @@ if __name__ == '__main__':
             # delete current folder from disk
             shutil.rmtree(f'{rec.log_folder}/frames_{rep_index}')
             os.remove(f'{rec.log_folder}/event_{rep_index}.raw')
+        elif message == 'Q':
+            break
         else:
             rep_index = 1
             index += 1

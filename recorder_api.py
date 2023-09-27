@@ -25,6 +25,7 @@ class Recorder:
     def __init__(self, output_dir, id):
 
         self.id = id
+        self.verbose = False
         self.user_id = uuid.uuid4().hex
         self.output_dir = output_dir + '/' + self.user_id
 
@@ -50,17 +51,16 @@ class Recorder:
     def record_event(self):
         # Start the recording with the event camera
         if self.device.get_i_events_stream():
-            print(self.event_log_path)
-            print(f'Recording event data to {self.event_log_path}')
+            print(f'Recording event data to {self.event_log_path}') if self.verbose else None
             self.device.get_i_events_stream().log_raw_data(self.event_log_path)
-            print('recording started')
+            print('recording started') if self.verbose else None
         else:
-            print("No event camera found.")
+            print("No event camera found.") if self.verbose else None
 
         # Events iterator on Device
         mv_iterator = EventsIterator.from_device(device=self.device)
         height, width = mv_iterator.get_size()  # Camera Geometry
-        print(f"Event camera - height: {height}, width: {width}")
+        print(f"Event camera - height: {height}, width: {width}") if self.verbose else None
 
         close_time = None
 
@@ -71,18 +71,18 @@ class Recorder:
                 # As soon as the event camera starts recording, send a trigger to the
                 # rgb thread to throw away previously stored frames.
                 evt_start_timestamp = time.time()
-                print(f"evt_start_timestamp: {evt_start_timestamp}")
+                print(f"evt_start_timestamp: {evt_start_timestamp}") if self.verbose else None
 
             if self.stop_recording_trigger.is_set():
                 if close_time is None:
                     close_time = self.get_closing_time()
-                    print(f'stopping event camera at {close_time}...')
+                    print(f'stopping event camera at {close_time}...') if self.verbose else None
 
                 # Stop the recording
                 if datetime.now() > close_time:
                     self.device.get_i_events_stream().stop_log_raw_data()
                     self.event_camera_has_stopped_trigger.set()
-                    print('done')
+                    print('done') if self.verbose else None
                     break
 
     def set_directory(self, rep):
@@ -92,7 +92,7 @@ class Recorder:
         os.makedirs(self.log_folder + '/frames_' + str(rep), exist_ok=True)
         self.rgb_log_folder = self.log_folder + '/frames_' + str(rep)
         self.event_log_path = self.log_folder + "/event_" + str(rep) + ".raw"
-        print(f"\nRecording to {self.log_folder}")
+        print(f"\nRecording to {self.log_folder}") if self.verbose else None
     
     def record_rgb_synch(self):
         #start video capture
@@ -116,8 +116,8 @@ class Recorder:
             grabbed = cap.grab()
 
             if self.ev_start_trigger.is_set() and not is_recording:
-                print('#################### starting rgb camera...')
-                print('starting rgb camera...')
+                print('#################### starting rgb camera...') if self.verbose else None
+                print('starting rgb camera...') if self.verbose else None
                 is_recording = True
                 # store first frame
                 _, frame = cap.retrieve()
@@ -135,19 +135,20 @@ class Recorder:
                 if self.stop_recording_trigger.is_set() and is_recording:
                     if close_timestamp is None:
                         close_timestamp = self.get_closing_time()
-                        print(f'stopping rgb camera at {close_timestamp}...')
+                        print(f'stopping rgb camera at {close_timestamp}...') if self.verbose else None
                     if datetime.now() > close_timestamp:
                         is_recording = False
 
                         duration = close_timestamp - start_timestamp
-                        print(f"duration: {duration.total_seconds()}")
-                        fps = len(frame_buffer)/(duration.total_seconds())
-                        print(f"frames: {len(frame_buffer)}")
-                        print(f"actual fps: {fps} ---- desired fps: {FPS}")
-                        print(f"len(frame_buffer): {len(frame_buffer)}")
-                        print(f"duration: {duration}")
+                        print(f"duration: {duration.total_seconds()}") if self.verbose else None
+                        fps = len(frame_buffer)/(duration.total_seconds()) 
+                        if self.verbose:
+                            print(f"frames: {len(frame_buffer)}") 
+                            print(f"actual fps: {fps} ---- desired fps: {FPS}")
+                            print(f"len(frame_buffer): {len(frame_buffer)}")
+                            print(f"duration: {duration}")
 
-                        print("saving video frames")
+                            print("saving video frames")
                         # The loop goes through the array of images and writes each image to the video file
                         for i in range(len(frame_buffer)):
                             # save video as frames in the frames folder. Add timestamp to filename
@@ -156,13 +157,13 @@ class Recorder:
                                 cv2.imwrite(f"{self.rgb_log_folder}/frame_{i}_{cur_timestamp.strftime('%H:%M:%S.%f')}.jpg",
                                             frame_buffer[i]['frame'])
                             else:
-                                print(f"skipping frame at {cur_timestamp.strftime('%H:%M:%S.%f')}...")
+                                print(f"skipping frame at {cur_timestamp.strftime('%H:%M:%S.%f')}...") if self.verbose else None
             
                         frame_buffer = []
                         close_timestamp = None
-                        print("Done")
+                        print("Done") if self.verbose else None
             if self.exit_trigger.is_set():
-                print('Exiting camera thread...')
+                print('Exiting camera thread...') if self.verbose else None
                 break
 
     def start_recording_rgb_and_event(self):
@@ -182,7 +183,7 @@ class Recorder:
     def stop_recording_rgb_and_event(self):
         close_time = datetime.now() + timedelta(seconds=1)
         close_time -= timedelta(microseconds=close_time.microsecond)
-        print(f"close_time: {close_time}")
+        print(f"close_time: {close_time}") if self.verbose else None
         self.stop_recording_trigger.set()
         # reset trigger
         self.ev_start_trigger.clear()
@@ -193,7 +194,7 @@ class Recorder:
     def get_closing_time(self):
         close_time = datetime.now() + timedelta(seconds=1)
         close_time -= timedelta(microseconds=close_time.microsecond)
-        print(f"close_time: {close_time.strftime('%H:%M:%S.%f')}")
+        print(f"close_time: {close_time.strftime('%H:%M:%S.%f')}") if self.verbose else None
         return close_time
     
     def exit(self):
