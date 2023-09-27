@@ -13,6 +13,7 @@ from multiprocessing import Process, Event
 # from camera_record import record_video_till_stop
 import cv2
 from datetime import datetime, timedelta
+import uuid
 
 '''
 This file contains a collection of functions to be used in the main script for recording.
@@ -21,10 +22,14 @@ This file contains a collection of functions to be used in the main script for r
 
 class Recorder:
 
-    def __init__(self):
+    def __init__(self, output_dir, id):
+
+        self.id = id
+        self.user_id = uuid.uuid4().hex
+        self.output_dir = output_dir + '/' + self.user_id
 
         # Output folder creation
-        self.set_directory()
+        self.set_directory(1)
 
         # Thread events
         self.stop_recording_trigger = Event() # thread event for stopping RGB camera
@@ -38,6 +43,9 @@ class Recorder:
 
         # # Event camera thread
         # self.event_record = Process(target=self.record_event)
+
+    def change_id(self, new_id):
+        self.id = new_id
 
     def record_event(self):
         # Start the recording with the event camera
@@ -77,21 +85,21 @@ class Recorder:
                     print('done')
                     break
 
-    def set_directory(self):
-        self.output_dir = 'recordings'
-        self.recording_name = "recording_" + datetime.now().strftime('%H:%M:%S.%f')
+    def set_directory(self, rep):
+        self.recording_name = "AU_" + str(self.id)
         self.log_folder = os.path.join(self.output_dir, self.recording_name)
         os.makedirs(self.log_folder, exist_ok=True)
-        os.makedirs(self.log_folder + '/frames', exist_ok=True)
-        self.event_log_path = self.log_folder + "/event.raw"
-        print(f"Recording to {self.log_folder}")
+        os.makedirs(self.log_folder + '/frames_' + str(rep), exist_ok=True)
+        self.rgb_log_folder = self.log_folder + '/frames_' + str(rep)
+        self.event_log_path = self.log_folder + "/event_" + str(rep) + ".raw"
+        print(f"\nRecording to {self.log_folder}")
     
     def record_rgb_synch(self):
         #start video capture
         cap = cv2.VideoCapture(0)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
         # set framerate
-        FPS = 30.0
+        FPS = 100.0
         cap.set(cv2.CAP_PROP_FPS, FPS)
         freq_frames = 1/FPS
         frame_buffer = []
@@ -145,8 +153,10 @@ class Recorder:
                             # save video as frames in the frames folder. Add timestamp to filename
                             cur_timestamp = frame_buffer[i]['timestamp']
                             if cur_timestamp <= close_timestamp:
-                                cv2.imwrite(f"{self.log_folder}/frames/frame_{i}_{cur_timestamp.strftime('%H:%M:%S.%f')}.jpg",
+                                cv2.imwrite(f"{self.rgb_log_folder}/frame_{i}_{cur_timestamp.strftime('%H:%M:%S.%f')}.jpg",
                                             frame_buffer[i]['frame'])
+                            else:
+                                print(f"skipping frame at {cur_timestamp.strftime('%H:%M:%S.%f')}...")
             
                         frame_buffer = []
                         close_timestamp = None
@@ -217,36 +227,51 @@ def sanity_check(recordings_folder):
 
 
 
-rec = Recorder()
+# rec = Recorder('recordings_au', 1)
 
-time.sleep(3)
+# time.sleep(3)
 
-rec.start_recording_rgb_and_event()
+# index = 0
+# while True:
+#     rec.start_recording_rgb_and_event()
+#     _ = input('press enter to stop recording...')
+#     rec.stop_recording_rgb_and_event()
+
+#     message = input('press enter to start recording again...')
+#     # handle differente cases: 'r' for repeat or anything else for going on
+#     if message == 'r':
+        
+#     else:
+#         index += 1
+#         rec.change_id(index)
+#         rec.set_directory(1)
+
 
 # wait 5 seconds
-start_time = time.time()
+# start_time = time.time()
 
-while time.time() - start_time < 4:
-    #print('waiting...')
-    pass
-print('done waiting')
+# while time.time() - start_time < 4:
+#     #print('waiting...')
+#     pass
+# print('done waiting')
 
-rec.stop_recording_rgb_and_event()
+#rec.stop_recording_rgb_and_event()
 
-print('-----------------------FIRST RECORDING DONE-----------------------')
+# print('-----------------------FIRST RECORDING DONE-----------------------')
 
-time.sleep(5)
+# time.sleep(5)
 
-rec.set_directory()
-rec.start_recording_rgb_and_event()
-# wait 5 seconds
-start_time = time.time()
+# rec.change_id(2)
+# rec.set_directory(1)
+# rec.start_recording_rgb_and_event()
+# # wait 5 seconds
+# start_time = time.time()
 
-while time.time() - start_time < 4:
-    #print('waiting...')
-    pass
-print('done waiting')
+# while time.time() - start_time < 4:
+#     #print('waiting...')
+#     pass
+# print('done waiting')
 
-rec.stop_recording_rgb_and_event()
+# rec.stop_recording_rgb_and_event()
 
-print('-----------------------SECOND RECORDING DONE-----------------------')
+# print('-----------------------SECOND RECORDING DONE-----------------------')
