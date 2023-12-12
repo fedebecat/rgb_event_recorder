@@ -10,7 +10,6 @@ import requests
 
 # the url of the webserver where the sentences are going to be displayed
 url = 'http://localhost:8000'
-
 # read sentences.txt from file and store each line in a list
 sentences = []
 with open('sentences.txt', 'r') as book:
@@ -23,13 +22,14 @@ if __name__ == '__main__':
     au_indexes = ["FREE", 1, 2, 4, 6, 7, 9, 10, 12, 14, 15, 17, 23, 24, 25, 26, 27, 43, 45,
                   51, 52, 53, 54, 55, 56, "READING"]
 
-    # ask name, surname, email to the user
+    # ask name, surname, email to the userco
     name = input("Name: ")
     surname = input("Surname: ")
     email = input("Email: ")
 
     index = 0
     rep_index = 1
+
     rec = Recorder('recordings', au_indexes[index])
     user_hash = rec.user_id
 

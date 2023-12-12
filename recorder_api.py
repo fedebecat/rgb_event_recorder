@@ -98,6 +98,11 @@ class Recorder:
         #start video capture
         cap = cv2.VideoCapture(0)
         cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        # set height and width
+        # cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        # cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
         # set framerate
         FPS = 100.0
         cap.set(cv2.CAP_PROP_FPS, FPS)
@@ -144,10 +149,11 @@ class Recorder:
                         fps = len(frame_buffer)/(duration.total_seconds()) 
                         if self.verbose:
                             print(f"frames: {len(frame_buffer)}") 
-                            print(f"actual fps: {fps} ---- desired fps: {FPS}")
                             print(f"len(frame_buffer): {len(frame_buffer)}")
                             print(f"duration: {duration}")
-
+                        print(f"actual fps: {fps} ---- desired fps: {FPS}")
+                        
+                        if self.verbose:
                             print("saving video frames")
                         # The loop goes through the array of images and writes each image to the video file
                         for i in range(len(frame_buffer)):
